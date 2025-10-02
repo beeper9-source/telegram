@@ -13,6 +13,9 @@ import time
 import threading
 from telegram_sender import TelegramSender
 import pytz
+import subprocess
+import queue
+import sys
 
 # 한국 시간대 설정
 KST = pytz.timezone('Asia/Seoul')
@@ -20,6 +23,90 @@ KST = pytz.timezone('Asia/Seoul')
 def get_korean_time():
     """한국 시간을 반환"""
     return datetime.now(KST)
+
+
+class LogMonitor:
+    """스케줄 서비스 로그 모니터링 클래스"""
+    def __init__(self):
+        self.log_queue = queue.Queue()
+        self.process = None
+        self.monitoring = False
+        self.logs = []
+        self.max_logs = 100  # 최대 로그 개수
+    
+    def start_monitoring(self):
+        """로그 모니터링 시작"""
+        if self.monitoring:
+            return
+        
+        try:
+            # 스케줄 서비스 프로세스 시작
+            self.process = subprocess.Popen(
+                [sys.executable, "schedule_service_server.py"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            self.monitoring = True
+            
+            # 로그 읽기 스레드 시작
+            log_thread = threading.Thread(target=self._read_logs, daemon=True)
+            log_thread.start()
+            
+            return True, "로그 모니터링이 시작되었습니다."
+        except Exception as e:
+            return False, f"로그 모니터링 시작 실패: {e}"
+    
+    def stop_monitoring(self):
+        """로그 모니터링 중지"""
+        if not self.monitoring:
+            return
+        
+        self.monitoring = False
+        
+        if self.process:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=5)
+            except:
+                try:
+                    self.process.kill()
+                except:
+                    pass
+            finally:
+                self.process = None
+        
+        return True, "로그 모니터링이 중지되었습니다."
+    
+    def _read_logs(self):
+        """로그를 읽어서 큐에 저장"""
+        while self.monitoring and self.process:
+            try:
+                line = self.process.stdout.readline()
+                if line:
+                    timestamp = get_korean_time().strftime('%H:%M:%S')
+                    log_entry = f"[{timestamp}] {line.strip()}"
+                    self.log_queue.put(log_entry)
+                    
+                    # 로그 개수 제한
+                    if len(self.logs) >= self.max_logs:
+                        self.logs.pop(0)
+                    self.logs.append(log_entry)
+                else:
+                    time.sleep(0.1)
+            except Exception as e:
+                break
+    
+    def get_logs(self):
+        """현재까지의 로그 반환"""
+        return self.logs
+    
+    def is_monitoring(self):
+        """모니터링 상태 확인"""
+        return self.monitoring and self.process is not None
+
 
 # 페이지 설정
 st.set_page_config(
@@ -283,6 +370,9 @@ if 'tv_scheduler' not in st.session_state:
 
 if 'page' not in st.session_state:
     st.session_state.page = "dashboard"
+
+if 'log_monitor' not in st.session_state:
+    st.session_state.log_monitor = LogMonitor()
 
 
 def show_dashboard():
@@ -709,6 +799,101 @@ def show_settings():
                     st.error("삭제에 실패했습니다.")
 
 
+def show_log_monitor():
+    """로그 모니터링 페이지"""
+    st.markdown('<h1 class="main-header">📊 스케줄 서비스 로그 모니터</h1>', unsafe_allow_html=True)
+    
+    # 실시간 시계 표시
+    current_time = get_korean_time()
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #e8f5e8; border-radius: 0.5rem;">
+        <span style="color: #2e7d32; font-family: 'Courier New', monospace; font-weight: bold;">
+            🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    log_monitor = st.session_state.log_monitor
+    
+    # 제어 버튼
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("🚀 모니터링 시작", use_container_width=True):
+            success, message = log_monitor.start_monitoring()
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+            st.rerun()
+    
+    with col2:
+        if st.button("⏹️ 모니터링 중지", use_container_width=True):
+            success, message = log_monitor.stop_monitoring()
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+            st.rerun()
+    
+    with col3:
+        if st.button("🔄 새로고침", use_container_width=True):
+            st.rerun()
+    
+    with col4:
+        if st.button("🗑️ 로그 지우기", use_container_width=True):
+            log_monitor.logs = []
+            st.success("로그가 지워졌습니다.")
+            st.rerun()
+    
+    # 모니터링 상태 표시
+    status_col1, status_col2 = st.columns(2)
+    
+    with status_col1:
+        if log_monitor.is_monitoring():
+            st.success("🟢 모니터링 활성")
+        else:
+            st.error("🔴 모니터링 비활성")
+    
+    with status_col2:
+        st.info(f"📊 로그 개수: {len(log_monitor.logs)}개")
+    
+    # 로그 표시 영역
+    st.subheader("📋 실시간 로그")
+    
+    if log_monitor.logs:
+        # 로그를 역순으로 표시 (최신 로그가 위에)
+        logs_display = log_monitor.logs[-50:]  # 최근 50개만 표시
+        logs_display.reverse()
+        
+        # 로그 컨테이너
+        log_container = st.container()
+        
+        with log_container:
+            for log in logs_display:
+                # 로그 타입에 따른 색상 구분
+                if "❌" in log or "오류" in log or "실패" in log:
+                    st.error(log)
+                elif "✅" in log or "성공" in log or "완료" in log:
+                    st.success(log)
+                elif "🚀" in log or "시작" in log:
+                    st.info(log)
+                elif "📺" in log or "방송" in log:
+                    st.warning(log)
+                else:
+                    st.text(log)
+    else:
+        st.info("로그가 없습니다. 모니터링을 시작하세요.")
+    
+    # 자동 새로고침 설정
+    st.subheader("⚙️ 자동 새로고침 설정")
+    auto_refresh = st.checkbox("자동 새로고침 (5초마다)", value=True)
+    
+    if auto_refresh and log_monitor.is_monitoring():
+        time.sleep(5)
+        st.rerun()
+
+
 def main():
     """메인 함수"""
     # 사이드바 네비게이션
@@ -729,6 +914,10 @@ def main():
         
         if st.button("⚙️ 설정", use_container_width=True):
             st.session_state.page = "settings"
+            st.rerun()
+        
+        if st.button("📊 로그 모니터", use_container_width=True):
+            st.session_state.page = "log_monitor"
             st.rerun()
         
         st.markdown("---")
@@ -781,6 +970,8 @@ def main():
         show_schedule_list()
     elif st.session_state.page == "settings":
         show_settings()
+    elif st.session_state.page == "log_monitor":
+        show_log_monitor()
 
 
 if __name__ == "__main__":
