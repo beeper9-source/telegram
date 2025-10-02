@@ -9,7 +9,6 @@ import json
 import os
 import pandas as pd
 from datetime import datetime, timedelta
-import schedule
 import time
 import threading
 from telegram_sender import TelegramSender
