@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}메시지 전송 - 텔레그램 전송 대상 관리{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-paper-plane"></i> 메시지 전송</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="message" class="form-label">
+                            <i class="fas fa-comment"></i> 메시지 내용 <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="message" name="message" rows="6" 
+                                  placeholder="전송할 메시지를 입력하세요..." required></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            HTML 태그를 사용할 수 있습니다. 예: &lt;b&gt;굵은 글씨&lt;/b&gt;, &lt;i&gt;기울임&lt;/i&gt;
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-users"></i> 전송 대상
+                        </label>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>{{ active_users|length }}명</strong>의 활성 사용자에게 전송됩니다.
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary" onclick="previewMessage()">
+                            <i class="fas fa-eye"></i> 미리보기
+                        </button>
+                        <button type="submit" class="btn btn-telegram">
+                            <i class="fas fa-paper-plane"></i> 메시지 전송
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-list"></i> 전송 대상 목록</h6>
+            </div>
+            <div class="card-body">
+                {% if active_users %}
+                    <div class="list-group">
+                        {% for user_id in active_users %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-user"></i> {{ user_id }}</span>
+                                <span class="badge bg-success">활성</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('users') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-cog"></i> 사용자 관리
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>활성 사용자가 없습니다.</p>
+                        <a href="{{ url_for('users') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-user-plus"></i> 사용자 추가
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-magic"></i> 빠른 템플릿</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="insertTemplate('greeting')">
+                        <i class="fas fa-hand-wave"></i> 인사말
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="insertTemplate('notice')">
+                        <i class="fas fa-bullhorn"></i> 공지사항
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="insertTemplate('test')">
+                        <i class="fas fa-vial"></i> 테스트 메시지
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 미리보기 모달 -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-eye"></i> 메시지 미리보기</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="border p-3 rounded bg-light">
+                    <div id="previewContent"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewMessage() {
+    const message = document.getElementById('message').value;
+    if (!message.trim()) {
+        alert('메시지를 입력하세요.');
+        return;
+    }
+    
+    document.getElementById('previewContent').innerHTML = message;
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+function insertTemplate(type) {
+    const textarea = document.getElementById('message');
+    let template = '';
+    
+    switch(type) {
+        case 'greeting':
+            template = '안녕하세요! 텔레그램 메시지 전송 테스트입니다. 🚀';
+            break;
+        case 'notice':
+            template = '<b>📢 공지사항</b>\n\n안녕하세요.\n\n중요한 공지사항을 전달드립니다.\n\n감사합니다.';
+            break;
+        case 'test':
+            template = '테스트 메시지입니다.\n\n전송 시간: ' + new Date().toLocaleString();
+            break;
+    }
+    
+    textarea.value = template;
+    textarea.focus();
+}
+</script>
+{% endblock %}

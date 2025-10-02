@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}홈 - 텔레그램 전송 대상 관리{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-tachometer-alt"></i> 대시보드</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                                <h5 class="card-title">총 사용자</h5>
+                                <h2 class="text-primary">{{ users|length }}명</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-user-check fa-3x text-success mb-3"></i>
+                                <h5 class="card-title">활성 사용자</h5>
+                                <h2 class="text-success">{{ active_count }}명</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-paper-plane fa-3x text-info mb-3"></i>
+                                <h5 class="card-title">메시지 전송</h5>
+                                <a href="{{ url_for('send_message') }}" class="btn btn-telegram mt-2">전송하기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> 최근 사용자 목록</h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>이름</th>
+                                    <th>사용자 ID</th>
+                                    <th>상태</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users[:5] %}
+                                <tr>
+                                    <td>{{ user.name }}</td>
+                                    <td><code>{{ user.id }}</code></td>
+                                    <td>
+                                        {% if user.active %}
+                                            <span class="badge bg-success">활성</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">비활성</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('toggle_user', user_id=user.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-toggle-{{ 'on' if user.active else 'off' }}"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if users|length > 5 %}
+                        <div class="text-center">
+                            <a href="{{ url_for('users') }}" class="btn btn-outline-primary">전체 보기</a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-users fa-3x mb-3"></i>
+                        <p>등록된 사용자가 없습니다.</p>
+                        <a href="{{ url_for('add_user') }}" class="btn btn-primary">첫 번째 사용자 추가</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> 빠른 작업</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('add_user') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> 사용자 추가
+                    </a>
+                    <a href="{{ url_for('users') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-users"></i> 사용자 관리
+                    </a>
+                    <a href="{{ url_for('send_message') }}" class="btn btn-telegram">
+                        <i class="fas fa-paper-plane"></i> 메시지 전송
+                    </a>
+                    <button onclick="sendTestMessage()" class="btn btn-outline-success">
+                        <i class="fas fa-play"></i> 테스트 전송
+                    </button>
+                    <a href="{{ url_for('update_config') }}" class="btn btn-outline-warning">
+                        <i class="fas fa-sync"></i> config.py 업데이트
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function sendTestMessage() {
+    if (confirm('테스트 메시지를 전송하시겠습니까?')) {
+        fetch('/api/send_test')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('오류: ' + data.error);
+                } else {
+                    alert(`테스트 메시지 전송 완료!\n성공: ${data.success_count}/${data.total_count}명`);
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                alert('오류가 발생했습니다: ' + error);
+            });
+    }
+}
+</script>
+{% endblock %}
