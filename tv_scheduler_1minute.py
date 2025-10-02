@@ -281,6 +281,20 @@ def show_dashboard():
     """대시보드 페이지"""
     st.markdown('<h1 class="main-header">📺 TV 방송 스케줄러</h1>', unsafe_allow_html=True)
     
+    # 실시간 시계 표시
+    current_time = datetime.now()
+    
+    # 시계를 위한 placeholder
+    dashboard_clock = st.empty()
+    with dashboard_clock.container():
+        st.markdown(f"""
+        <div style="text-align: center; margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <h2 style="color: white; font-family: 'Courier New', monospace; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                🕐 {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
+    
     scheduler = st.session_state.tv_scheduler
     schedules = scheduler.schedules["schedules"]
     active_schedules = [s for s in schedules if s["active"] and not s["sent"]]
@@ -372,6 +386,16 @@ def show_dashboard():
 def show_add_schedule():
     """스케줄 추가 페이지"""
     st.markdown('<h1 class="main-header">➕ 새 방송 스케줄 추가</h1>', unsafe_allow_html=True)
+    
+    # 실시간 시계 표시
+    current_time = datetime.now()
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #e3f2fd; border-radius: 0.5rem;">
+        <span style="color: #1976d2; font-family: 'Courier New', monospace; font-weight: bold;">
+            🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
     
     with st.form("add_schedule_form"):
         col1, col2 = st.columns(2)
@@ -509,6 +533,16 @@ def show_schedule_list():
     """스케줄 목록 페이지"""
     st.markdown('<h1 class="main-header">📋 전체 방송 스케줄</h1>', unsafe_allow_html=True)
     
+    # 실시간 시계 표시
+    current_time = datetime.now()
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #f3e5f5; border-radius: 0.5rem;">
+        <span style="color: #7b1fa2; font-family: 'Courier New', monospace; font-weight: bold;">
+            🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     scheduler = st.session_state.tv_scheduler
     schedules = scheduler.schedules["schedules"]
     
@@ -607,6 +641,16 @@ def show_settings():
     """설정 페이지"""
     st.markdown('<h1 class="main-header">⚙️ 설정</h1>', unsafe_allow_html=True)
     
+    # 실시간 시계 표시
+    current_time = datetime.now()
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #fff3e0; border-radius: 0.5rem;">
+        <span style="color: #f57c00; font-family: 'Courier New', monospace; font-weight: bold;">
+            🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     scheduler = st.session_state.tv_scheduler
     
     col1, col2 = st.columns(2)
@@ -680,6 +724,30 @@ def main():
             st.rerun()
         
         st.markdown("---")
+        
+        # 실시간 시계
+        st.markdown("### 🕐 현재 시간")
+        current_time = datetime.now()
+        
+        # 시계를 위한 placeholder
+        clock_placeholder = st.empty()
+        with clock_placeholder.container():
+            st.markdown(f"""
+            <div style="text-align: center; padding: 0.5rem; background-color: #f0f2f6; border-radius: 0.5rem;">
+                <h3 style="color: #007bff; font-family: 'Courier New', monospace; margin: 0;">
+                    {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+                </h3>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 1초마다 자동 새로고침
+        if 'last_refresh' not in st.session_state:
+            st.session_state.last_refresh = time.time()
+        
+        current_timestamp = time.time()
+        if current_timestamp - st.session_state.last_refresh >= 1.0:
+            st.session_state.last_refresh = current_timestamp
+            st.rerun()
         
         # 현재 상태 표시
         scheduler = st.session_state.tv_scheduler

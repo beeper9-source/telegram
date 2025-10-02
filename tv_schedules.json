@@ -62,7 +62,7 @@
       "program_name": "테스트방송",
       "message": "🧪 테스트 메시지 - 15:26",
       "active": true,
-      "sent": false,
+      "sent": true,
       "created_at": "2025-10-02T15:25:00.000000"
     },
     {
