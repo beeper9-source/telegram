@@ -266,7 +266,7 @@ def main():
     
     # 여러 사용자에게 메시지 전송
     print("\n📤 여러 사용자에게 메시지 전송 시도 중...")
-    message = "김구입니다. 추석 프로그램 전송프로그램 개발중 🚀"
+    message = "프로그램 목록 : https://telegram-5ut28rtfjubjj6ekx5pndy.streamlit.app/"
     results = sender.send_message_to_multiple(message)
     
     # 전송 결과 확인
