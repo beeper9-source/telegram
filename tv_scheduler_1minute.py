@@ -37,7 +37,7 @@ class LogMonitor:
     def start_monitoring(self):
         """로그 모니터링 시작"""
         if self.monitoring:
-            return
+            return True, "이미 모니터링 중입니다."
         
         try:
             # 스케줄 서비스 프로세스 시작
@@ -57,12 +57,14 @@ class LogMonitor:
             
             return True, "로그 모니터링이 시작되었습니다."
         except Exception as e:
+            self.monitoring = False
+            self.process = None
             return False, f"로그 모니터링 시작 실패: {e}"
     
     def stop_monitoring(self):
         """로그 모니터링 중지"""
         if not self.monitoring:
-            return
+            return True, "모니터링이 이미 중지되어 있습니다."
         
         self.monitoring = False
         
@@ -105,7 +107,21 @@ class LogMonitor:
     
     def is_monitoring(self):
         """모니터링 상태 확인"""
-        return self.monitoring and self.process is not None
+        if not self.monitoring or self.process is None:
+            return False
+        
+        # 프로세스가 실제로 실행 중인지 확인
+        try:
+            if self.process.poll() is not None:  # 프로세스가 종료됨
+                self.monitoring = False
+                self.process = None
+                return False
+        except:
+            self.monitoring = False
+            self.process = None
+            return False
+        
+        return True
 
 
 # 페이지 설정
@@ -847,7 +863,7 @@ def show_log_monitor():
             st.rerun()
     
     # 모니터링 상태 표시
-    status_col1, status_col2 = st.columns(2)
+    status_col1, status_col2, status_col3 = st.columns(3)
     
     with status_col1:
         if log_monitor.is_monitoring():
@@ -857,6 +873,11 @@ def show_log_monitor():
     
     with status_col2:
         st.info(f"📊 로그 개수: {len(log_monitor.logs)}개")
+    
+    with status_col3:
+        # 디버깅 정보 표시
+        st.text(f"프로세스: {'있음' if log_monitor.process else '없음'}")
+        st.text(f"상태 플래그: {log_monitor.monitoring}")
     
     # 로그 표시 영역
     st.subheader("📋 실시간 로그")

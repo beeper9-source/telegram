@@ -63,7 +63,7 @@ class ScheduleService:
                 json.dump(schedules, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"❌ 스케줄 저장 실패: {e}")
+            print(f"[ERROR] 스케줄 저장 실패: {e}")
             return False
     
     def check_and_send_messages(self):
@@ -71,21 +71,21 @@ class ScheduleService:
         schedules = self.load_schedules()
         current_time = get_korean_time()
         
-        print(f"🔍 스케줄 확인 중... 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"📋 총 스케줄 수: {len(schedules['schedules'])}")
+        print(f"[INFO] 스케줄 확인 중... 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"[INFO] 총 스케줄 수: {len(schedules['schedules'])}")
         
         active_schedules = [s for s in schedules["schedules"] if s["active"] and not s["sent"]]
-        print(f"⏰ 활성 스케줄 수: {len(active_schedules)}")
+        print(f"[INFO] 활성 스케줄 수: {len(active_schedules)}")
         
         for i, schedule_item in enumerate(schedules["schedules"]):
             print(f"\n--- 스케줄 {i+1}: {schedule_item['program_name']} ---")
             print(f"📅 날짜: {schedule_item['date']}")
-            print(f"⏰ 시간: {schedule_item['time']}")
-            print(f"🟢 활성화: {schedule_item['active']}")
-            print(f"📤 전송완료: {schedule_item['sent']}")
+            print(f"[INFO] 시간: {schedule_item['time']}")
+            print(f"[INFO] 활성화: {schedule_item['active']}")
+            print(f"[INFO] 전송완료: {schedule_item['sent']}")
             
             if not schedule_item["active"] or schedule_item["sent"]:
-                print("⏭️ 건너뜀 (비활성화 또는 전송완료)")
+                print("[SKIP] 건너뜀 (비활성화 또는 전송완료)")
                 continue
             
             try:
@@ -102,12 +102,12 @@ class ScheduleService:
                 
                 # 현재 시간과 비교 (1분 오차 허용)
                 time_diff = abs((current_time - schedule_datetime).total_seconds())
-                print(f"⏰ 시간 차이: {time_diff:.0f}초")
+                print(f"[INFO] 시간 차이: {time_diff:.0f}초")
                 
                 if time_diff <= 60:  # 1분 이내
-                    print(f"🚀 전송 조건 만족! 방송 알림 전송 시작...")
-                    print(f"📺 방송명: {schedule_item['program_name']}")
-                    print(f"📺 채널: {schedule_item['channel']}")
+                    print(f"[SEND] 전송 조건 만족! 방송 알림 전송 시작...")
+                    print(f"[INFO] 방송명: {schedule_item['program_name']}")
+                    print(f"[INFO] 채널: {schedule_item['channel']}")
                     
                     # 메시지 전송
                     active_users = self.user_manager.get_active_user_ids()
@@ -120,22 +120,22 @@ class ScheduleService:
                         )
                         
                         success_count = sum(1 for r in results if r["success"])
-                        print(f"✅ 전송 완료: {success_count}/{len(active_users)}명")
+                        print(f"[SUCCESS] 전송 완료: {success_count}/{len(active_users)}명")
                         
                         # 전송 완료 표시
                         schedule_item["sent"] = True
                         self.save_schedules(schedules)
                         print("💾 스케줄 상태 업데이트 완료")
                     else:
-                        print("⚠️ 활성 사용자가 없습니다.")
+                        print("[WARNING] 활성 사용자가 없습니다.")
                 else:
-                    print(f"⏳ 아직 시간이 안됨 (차이: {time_diff:.0f}초)")
+                    print(f"[WAIT] 아직 시간이 안됨 (차이: {time_diff:.0f}초)")
                         
             except ValueError as e:
-                print(f"❌ 스케줄 시간 파싱 오류: {e}")
+                print(f"[ERROR] 스케줄 시간 파싱 오류: {e}")
                 continue
             except Exception as e:
-                print(f"❌ 예상치 못한 오류: {e}")
+                print(f"[ERROR] 예상치 못한 오류: {e}")
                 continue
     
     def schedule_checker(self):
@@ -146,13 +146,13 @@ class ScheduleService:
                 # 60초 대기 (매분 체크)
                 time.sleep(60)
             except Exception as e:
-                print(f"❌ 스케줄 체크 오류: {e}")
+                print(f"[ERROR] 스케줄 체크 오류: {e}")
                 time.sleep(60)  # 오류 발생 시에도 계속 실행
     
     def start_service(self):
         """서비스 시작"""
-        print("🚀 TV 방송 스케줄 서비스 시작...")
-        print("⏰ 매분마다 스케줄을 확인합니다.")
+        print("[START] TV 방송 스케줄 서비스 시작...")
+        print("[INFO] 매분마다 스케줄을 확인합니다.")
         
         self.running = True
         
@@ -169,7 +169,7 @@ class ScheduleService:
     
     def stop_service(self):
         """서비스 중지"""
-        print("⏹️ TV 방송 스케줄 서비스 중지...")
+        print("[STOP] TV 방송 스케줄 서비스 중지...")
         self.running = False
         if self.check_thread:
             self.check_thread.join(timeout=5)
@@ -184,7 +184,7 @@ def main():
     except KeyboardInterrupt:
         service.stop_service()
     except Exception as e:
-        print(f"❌ 서비스 오류: {e}")
+        print(f"[ERROR] 서비스 오류: {e}")
         service.stop_service()
 
 

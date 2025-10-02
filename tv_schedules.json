@@ -64,6 +64,45 @@
       "active": true,
       "sent": true,
       "created_at": "2025-10-02T16:02:26.245589+09:00"
+    },
+    {
+      "id": "2025-10-02_16:12_local12_local12",
+      "date": "2025-10-02",
+      "hour": 16,
+      "minute": 12,
+      "time": "16:12",
+      "channel": "local12",
+      "program_name": "local12",
+      "message": "📺 local12에서 'local12' 방송이 시작됩니다!",
+      "active": true,
+      "sent": false,
+      "created_at": "2025-10-02T16:11:09.024070+09:00"
+    },
+    {
+      "id": "2025-10-02_16:13_local13_local13",
+      "date": "2025-10-02",
+      "hour": 16,
+      "minute": 13,
+      "time": "16:13",
+      "channel": "local13",
+      "program_name": "local13",
+      "message": "📺 local13에서 'local13' 방송이 시작됩니다!",
+      "active": true,
+      "sent": true,
+      "created_at": "2025-10-02T16:11:26.309125+09:00"
+    },
+    {
+      "id": "test_20251002_1615",
+      "date": "2025-10-02",
+      "hour": 16,
+      "minute": 15,
+      "time": "16:15",
+      "channel": "테스트채널",
+      "program_name": "로그테스트",
+      "message": "[TEST] 로그 테스트 - 16:15",
+      "active": true,
+      "sent": true,
+      "created_at": "2025-10-02T16:14:14.259818+09:00"
     }
   ]
 }
