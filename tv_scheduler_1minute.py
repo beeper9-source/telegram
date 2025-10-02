@@ -12,6 +12,14 @@ from datetime import datetime, timedelta
 import time
 import threading
 from telegram_sender import TelegramSender
+import pytz
+
+# 한국 시간대 설정
+KST = pytz.timezone('Asia/Seoul')
+
+def get_korean_time():
+    """한국 시간을 반환"""
+    return datetime.now(KST)
 
 # 페이지 설정
 st.set_page_config(
@@ -185,7 +193,7 @@ class TVScheduler:
             "message": message,
             "active": True,
             "sent": False,
-            "created_at": datetime.now().isoformat()
+            "created_at": get_korean_time().isoformat()
         }
         
         self.schedules["schedules"].append(new_schedule)
@@ -221,7 +229,7 @@ class TVScheduler:
     def get_upcoming_schedules(self, days=7):
         """다가오는 스케줄들을 가져옵니다"""
         upcoming = []
-        today = datetime.now().date()
+        today = get_korean_time().date()
         
         for schedule in self.schedules["schedules"]:
             if not schedule["active"] or schedule["sent"]:
@@ -282,7 +290,7 @@ def show_dashboard():
     st.markdown('<h1 class="main-header">📺 TV 방송 스케줄러</h1>', unsafe_allow_html=True)
     
     # 실시간 시계 표시
-    current_time = datetime.now()
+    current_time = get_korean_time()
     
     # 시계를 위한 placeholder
     dashboard_clock = st.empty()
@@ -388,7 +396,7 @@ def show_add_schedule():
     st.markdown('<h1 class="main-header">➕ 새 방송 스케줄 추가</h1>', unsafe_allow_html=True)
     
     # 실시간 시계 표시
-    current_time = datetime.now()
+    current_time = get_korean_time()
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #e3f2fd; border-radius: 0.5rem;">
         <span style="color: #1976d2; font-family: 'Courier New', monospace; font-weight: bold;">
@@ -405,8 +413,8 @@ def show_add_schedule():
             
             date = st.date_input(
                 "방송 날짜",
-                value=datetime.now().date(),
-                min_value=datetime.now().date()
+                value=get_korean_time().date(),
+                min_value=get_korean_time().date()
             )
             
             # 시간 입력을 1분단위로 변경
@@ -419,7 +427,7 @@ def show_add_schedule():
                 hour = st.selectbox(
                     "시",
                     options=list(range(24)),
-                    index=datetime.now().hour,
+                    index=get_korean_time().hour,
                     format_func=lambda x: f"{x:02d}시"
                 )
             
@@ -534,7 +542,7 @@ def show_schedule_list():
     st.markdown('<h1 class="main-header">📋 전체 방송 스케줄</h1>', unsafe_allow_html=True)
     
     # 실시간 시계 표시
-    current_time = datetime.now()
+    current_time = get_korean_time()
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #f3e5f5; border-radius: 0.5rem;">
         <span style="color: #7b1fa2; font-family: 'Courier New', monospace; font-weight: bold;">
@@ -642,7 +650,7 @@ def show_settings():
     st.markdown('<h1 class="main-header">⚙️ 설정</h1>', unsafe_allow_html=True)
     
     # 실시간 시계 표시
-    current_time = datetime.now()
+    current_time = get_korean_time()
     st.markdown(f"""
     <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #fff3e0; border-radius: 0.5rem;">
         <span style="color: #f57c00; font-family: 'Courier New', monospace; font-weight: bold;">
@@ -671,10 +679,10 @@ def show_settings():
             backup_data = {
                 "schedules": schedules,
                 "users": scheduler.user_manager.users,
-                "backup_time": datetime.now().isoformat()
+                "backup_time": get_korean_time().isoformat()
             }
             
-            with open(f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", 'w', encoding='utf-8') as f:
+            with open(f"backup_{get_korean_time().strftime('%Y%m%d_%H%M%S')}.json", 'w', encoding='utf-8') as f:
                 json.dump(backup_data, f, ensure_ascii=False, indent=2)
             
             st.success("백업이 완료되었습니다!")
@@ -727,7 +735,7 @@ def main():
         
         # 실시간 시계
         st.markdown("### 🕐 현재 시간")
-        current_time = datetime.now()
+        current_time = get_korean_time()
         
         # 시계를 위한 placeholder
         clock_placeholder = st.empty()

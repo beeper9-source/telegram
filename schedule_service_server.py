@@ -10,6 +10,14 @@ import os
 import threading
 from datetime import datetime
 from telegram_sender import TelegramSender
+import pytz
+
+# 한국 시간대 설정
+KST = pytz.timezone('Asia/Seoul')
+
+def get_korean_time():
+    """한국 시간을 반환"""
+    return datetime.now(KST)
 
 
 class UserManager:
@@ -61,7 +69,7 @@ class ScheduleService:
     def check_and_send_messages(self):
         """현재 시간에 맞는 메시지들을 확인하고 전송"""
         schedules = self.load_schedules()
-        current_time = datetime.now()
+        current_time = get_korean_time()
         
         print(f"🔍 스케줄 확인 중... 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         
