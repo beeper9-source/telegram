@@ -202,8 +202,13 @@ class UserManager:
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, FileNotFoundError):
+                    data = json.load(f)
+                    # 데이터 구조 검증
+                    if "users" not in data:
+                        data = {"users": []}
+                    return data
+            except (json.JSONDecodeError, FileNotFoundError) as e:
+                st.warning(f"사용자 데이터 로드 오류: {e}")
                 return {"users": []}
         return {"users": []}
     
@@ -958,10 +963,23 @@ def show_user_management():
     with tab1:
         st.subheader("📋 등록된 사용자 목록")
         
-        users = user_manager.users["users"]
+        # 디버깅 정보 표시
+        with st.expander("🔧 디버깅 정보", expanded=False):
+            st.write(f"**데이터 파일**: {user_manager.data_file}")
+            st.write(f"**파일 존재**: {os.path.exists(user_manager.data_file)}")
+            st.write(f"**사용자 데이터 구조**: {list(user_manager.users.keys())}")
+            st.write(f"**사용자 수**: {len(user_manager.users.get('users', []))}")
+        
+        users = user_manager.users.get("users", [])
         
         if not users:
             st.info("등록된 사용자가 없습니다.")
+            st.markdown("""
+            **사용자를 추가하려면:**
+            1. 위의 "➕ 사용자 추가" 탭을 클릭하세요
+            2. 텔레그램 사용자 ID와 이름을 입력하세요
+            3. "✅ 사용자 추가" 버튼을 클릭하세요
+            """)
         else:
             # 사용자 통계
             active_users = [u for u in users if u["active"]]
