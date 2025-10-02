@@ -46,7 +46,9 @@ class LogMonitor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
-                bufsize=1
+                bufsize=0,  # 버퍼링 비활성화
+                encoding='utf-8',  # 명시적 인코딩
+                errors='replace'  # 인코딩 오류 처리
             )
             
             self.monitoring = True
@@ -54,6 +56,10 @@ class LogMonitor:
             # 로그 읽기 스레드 시작
             log_thread = threading.Thread(target=self._read_logs, daemon=True)
             log_thread.start()
+            
+            # 초기 로그 추가
+            timestamp = get_korean_time().strftime('%H:%M:%S')
+            self.logs.append(f"[{timestamp}] [SYSTEM] 로그 모니터링 시작됨")
             
             return True, "로그 모니터링이 시작되었습니다."
         except Exception as e:
@@ -96,9 +102,17 @@ class LogMonitor:
                     if len(self.logs) >= self.max_logs:
                         self.logs.pop(0)
                     self.logs.append(log_entry)
+                elif self.process.poll() is not None:
+                    # 프로세스가 종료됨
+                    timestamp = get_korean_time().strftime('%H:%M:%S')
+                    self.logs.append(f"[{timestamp}] [SYSTEM] 프로세스가 종료됨")
+                    self.monitoring = False
+                    break
                 else:
                     time.sleep(0.1)
             except Exception as e:
+                timestamp = get_korean_time().strftime('%H:%M:%S')
+                self.logs.append(f"[{timestamp}] [ERROR] 로그 읽기 오류: {e}")
                 break
     
     def get_logs(self):
@@ -878,6 +892,12 @@ def show_log_monitor():
         # 디버깅 정보 표시
         st.text(f"프로세스: {'있음' if log_monitor.process else '없음'}")
         st.text(f"상태 플래그: {log_monitor.monitoring}")
+        if log_monitor.process:
+            try:
+                poll_result = log_monitor.process.poll()
+                st.text(f"프로세스 상태: {'실행중' if poll_result is None else f'종료됨({poll_result})'}")
+            except:
+                st.text("프로세스 상태: 확인불가")
     
     # 로그 표시 영역
     st.subheader("📋 실시간 로그")
@@ -915,6 +935,272 @@ def show_log_monitor():
         st.rerun()
 
 
+def show_user_management():
+    """사용자 관리 페이지"""
+    st.markdown('<h1 class="main-header">👥 사용자 관리</h1>', unsafe_allow_html=True)
+    
+    # 실시간 시계 표시
+    current_time = get_korean_time()
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 1rem; padding: 0.5rem; background-color: #e3f2fd; border-radius: 0.5rem;">
+        <span style="color: #1976d2; font-family: 'Courier New', monospace; font-weight: bold;">
+            🕐 현재 시간: {current_time.strftime('%Y-%m-%d %H:%M:%S')}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    scheduler = st.session_state.tv_scheduler
+    user_manager = scheduler.user_manager
+    
+    # 탭 생성
+    tab1, tab2, tab3 = st.tabs(["👥 사용자 목록", "➕ 사용자 추가", "⚙️ 사용자 설정"])
+    
+    with tab1:
+        st.subheader("📋 등록된 사용자 목록")
+        
+        users = user_manager.users["users"]
+        
+        if not users:
+            st.info("등록된 사용자가 없습니다.")
+        else:
+            # 사용자 통계
+            active_users = [u for u in users if u["active"]]
+            inactive_users = [u for u in users if not u["active"]]
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("총 사용자", len(users))
+            with col2:
+                st.metric("활성 사용자", len(active_users))
+            with col3:
+                st.metric("비활성 사용자", len(inactive_users))
+            
+            st.markdown("---")
+            
+            # 사용자 목록 표시
+            for i, user in enumerate(users):
+                with st.container():
+                    col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
+                    
+                    with col1:
+                        status_icon = "🟢" if user["active"] else "🔴"
+                        st.write(f"**{status_icon} {user['name']}**")
+                        st.caption(f"ID: {user['id']}")
+                    
+                    with col2:
+                        if user["active"]:
+                            st.success("활성")
+                        else:
+                            st.error("비활성")
+                    
+                    with col3:
+                        if st.button("토글", key=f"toggle_user_{i}"):
+                            success, message = user_manager.toggle_user_status(user["id"])
+                            if success:
+                                st.success(message)
+                            else:
+                                st.error(message)
+                            st.rerun()
+                    
+                    with col4:
+                        if st.button("수정", key=f"edit_user_{i}"):
+                            st.session_state.editing_user_id = user["id"]
+                            st.session_state.editing_user_name = user["name"]
+                            st.rerun()
+                    
+                    with col5:
+                        if st.button("삭제", key=f"delete_user_{i}"):
+                            if st.checkbox(f"정말로 {user['name']}을(를) 삭제하시겠습니까?", key=f"confirm_delete_{i}"):
+                                success, message = user_manager.remove_user(user["id"])
+                                if success:
+                                    st.success(message)
+                                else:
+                                    st.error(message)
+                                st.rerun()
+                    
+                    st.markdown("---")
+    
+    with tab2:
+        st.subheader("➕ 새 사용자 추가")
+        
+        with st.form("add_user_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                user_id = st.text_input(
+                    "사용자 ID",
+                    placeholder="예: 123456789",
+                    help="텔레그램 사용자 ID를 입력하세요"
+                )
+            
+            with col2:
+                user_name = st.text_input(
+                    "사용자 이름",
+                    placeholder="예: 홍길동",
+                    help="사용자의 이름을 입력하세요"
+                )
+            
+            col_submit1, col_submit2 = st.columns(2)
+            
+            with col_submit1:
+                if st.form_submit_button("✅ 사용자 추가", use_container_width=True):
+                    if user_id and user_name:
+                        # 숫자 ID 확인
+                        try:
+                            int(user_id)
+                            success, message = user_manager.add_user(user_id, user_name)
+                            if success:
+                                st.success(message)
+                                st.balloons()
+                            else:
+                                st.error(message)
+                        except ValueError:
+                            st.error("사용자 ID는 숫자여야 합니다.")
+                    else:
+                        st.error("사용자 ID와 이름을 모두 입력하세요.")
+            
+            with col_submit2:
+                if st.form_submit_button("❌ 취소", use_container_width=True):
+                    st.rerun()
+        
+        # 사용자 ID 확인 도움말
+        st.info("""
+        **📱 텔레그램 사용자 ID 확인 방법:**
+        1. [@userinfobot](https://t.me/userinfobot)에게 메시지 전송
+        2. 받은 메시지에서 숫자 ID 복사
+        3. 위 입력란에 붙여넣기
+        """)
+    
+    with tab3:
+        st.subheader("⚙️ 사용자 설정")
+        
+        # 사용자 수정 폼
+        if 'editing_user_id' in st.session_state:
+            st.markdown("### ✏️ 사용자 정보 수정")
+            
+            with st.form("edit_user_form"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    edit_id = st.text_input(
+                        "사용자 ID",
+                        value=st.session_state.editing_user_id,
+                        disabled=True,
+                        help="사용자 ID는 변경할 수 없습니다"
+                    )
+                
+                with col2:
+                    edit_name = st.text_input(
+                        "사용자 이름",
+                        value=st.session_state.editing_user_name,
+                        help="새로운 이름을 입력하세요"
+                    )
+                
+                col_submit1, col_submit2 = st.columns(2)
+                
+                with col_submit1:
+                    if st.form_submit_button("💾 저장", use_container_width=True):
+                        if edit_name:
+                            # 사용자 이름 업데이트
+                            for user in user_manager.users["users"]:
+                                if user["id"] == st.session_state.editing_user_id:
+                                    user["name"] = edit_name
+                                    break
+                            
+                            if user_manager.save_users():
+                                st.success(f"사용자 '{edit_name}' 정보가 업데이트되었습니다.")
+                                del st.session_state.editing_user_id
+                                del st.session_state.editing_user_name
+                                st.rerun()
+                            else:
+                                st.error("사용자 정보 업데이트에 실패했습니다.")
+                        else:
+                            st.error("사용자 이름을 입력하세요.")
+                
+                with col_submit2:
+                    if st.form_submit_button("❌ 취소", use_container_width=True):
+                        del st.session_state.editing_user_id
+                        del st.session_state.editing_user_name
+                        st.rerun()
+        
+        # 일괄 작업
+        st.markdown("### 🔧 일괄 작업")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🟢 모든 사용자 활성화", use_container_width=True):
+                for user in user_manager.users["users"]:
+                    user["active"] = True
+                if user_manager.save_users():
+                    st.success("모든 사용자가 활성화되었습니다.")
+                else:
+                    st.error("사용자 활성화에 실패했습니다.")
+                st.rerun()
+        
+        with col2:
+            if st.button("🔴 모든 사용자 비활성화", use_container_width=True):
+                for user in user_manager.users["users"]:
+                    user["active"] = False
+                if user_manager.save_users():
+                    st.success("모든 사용자가 비활성화되었습니다.")
+                else:
+                    st.error("사용자 비활성화에 실패했습니다.")
+                st.rerun()
+        
+        with col3:
+            if st.button("🗑️ 비활성 사용자 삭제", use_container_width=True):
+                original_count = len(user_manager.users["users"])
+                user_manager.users["users"] = [u for u in user_manager.users["users"] if u["active"]]
+                removed_count = original_count - len(user_manager.users["users"])
+                
+                if user_manager.save_users():
+                    st.success(f"{removed_count}명의 비활성 사용자가 삭제되었습니다.")
+                else:
+                    st.error("사용자 삭제에 실패했습니다.")
+                st.rerun()
+        
+        # 데이터 백업/복원
+        st.markdown("### 💾 데이터 관리")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("💾 사용자 데이터 백업", use_container_width=True):
+                backup_data = {
+                    "users": user_manager.users,
+                    "backup_time": get_korean_time().isoformat()
+                }
+                
+                filename = f"users_backup_{get_korean_time().strftime('%Y%m%d_%H%M%S')}.json"
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(backup_data, f, ensure_ascii=False, indent=2)
+                
+                st.success(f"백업이 완료되었습니다: {filename}")
+        
+        with col2:
+            uploaded_file = st.file_uploader(
+                "사용자 데이터 복원",
+                type=['json'],
+                help="백업된 JSON 파일을 선택하세요"
+            )
+            
+            if uploaded_file is not None:
+                try:
+                    data = json.load(uploaded_file)
+                    if "users" in data:
+                        user_manager.users = data["users"]
+                        if user_manager.save_users():
+                            st.success("사용자 데이터가 복원되었습니다.")
+                            st.rerun()
+                        else:
+                            st.error("데이터 복원에 실패했습니다.")
+                    else:
+                        st.error("올바른 백업 파일이 아닙니다.")
+                except Exception as e:
+                    st.error(f"파일 읽기 오류: {e}")
+
+
 def main():
     """메인 함수"""
     # 사이드바 네비게이션
@@ -939,6 +1225,10 @@ def main():
         
         if st.button("📊 로그 모니터", use_container_width=True):
             st.session_state.page = "log_monitor"
+            st.rerun()
+        
+        if st.button("👥 사용자 관리", use_container_width=True):
+            st.session_state.page = "user_management"
             st.rerun()
         
         st.markdown("---")
@@ -993,6 +1283,8 @@ def main():
         show_settings()
     elif st.session_state.page == "log_monitor":
         show_log_monitor()
+    elif st.session_state.page == "user_management":
+        show_user_management()
 
 
 if __name__ == "__main__":
